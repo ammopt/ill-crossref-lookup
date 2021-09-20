@@ -41,7 +41,11 @@
 
   // Establish our backend
   var re = /backend=(.*)+\b/;
-  var backend = window.location.search.match(re)[1];
+  var backend_match = window.location.search.match(re);
+  
+  if (!backend_match) return;
+  
+  var backend = backend_match[1];
 
   var select = $('select#type[name=' + backends[backend].selectName + ']');
   
