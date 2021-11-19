@@ -40,7 +40,8 @@
   };
 
   // Establish our backend
-  var re = /backend=(.*)+\b/;
+  var backend_names = Object.keys(backends).join('|');
+  var re = new RegExp('backend=(' + backend_names + ')');
   var backend_match = window.location.search.match(re);
   
   if (!backend_match) return;
