@@ -1,6 +1,43 @@
-/* START CROSSREF DOI LOOKUP */
+/* START CROSSREF DOI / PUBMEDID LOOKUP */
 (function() {
   var backends = {
+      ReprintsDesk: {
+            materialTypes: [ 'Article' ],
+          parser: function(data) {
+            if(typeof data.message !== 'undefined'){
+                var message = data.message;
+                $('#issue').val(message.issue);
+                $('#pages').val(message.page);
+                $('#atitle').val(message.title.join('. '));
+                $('#volume').val(message.volume);
+                $('#aufirst').val(message.author.map(function(a) {
+                    return a.given;
+                }).join('; '));
+                $('#aulast').val(message.author.map(function(a) {
+                    return a.family;
+                }).join('; '));
+                $('#title').val(message['container-title'].join('. '));
+                $('#issn').val(message.ISSN[0]);
+                $('#date').val(message.published['date-parts'][0][0]);
+            }
+            if(typeof data.result !== 'undefined'){
+                var uid = data.result.uids[0];
+                var result = data.result[uid];
+                console.log(result);
+                $('#issue').val(result.issue);
+                $('#pages').val(result.pages);
+                $('#atitle').val(result.title);
+                $('#volume').val(result.volume);
+                $('#aufirst').val(result.authors.map(function(a) {
+                    return a.name;
+                }).join('; '));
+                $('#aulast').val("");
+                $('#title').val(result.fulljournalname);
+                $('#issn').val(result.issn);
+                $('#date').val(result.sortpubdate.slice(0,4));
+            }
+          }
+      },
       RapidILL: {
           selectName: 'RapidRequestType',
           materialTypes: [ 'Article' ],
@@ -55,33 +92,37 @@
       $('#illrequests input') :
       $('#interlibraryloans input');
 
-  // Initialise the variable to store the DOI element
+  // Initialise the variable to store the DOI and PubmedID elements
   var doiField;
+  var pubmedidField;
 
   // When the select changes, keep things correct
   $(select).change(function() {
-      manageDoi(); 
+      manageIdentifier();
   });
 
 
   // Manage the presence of the DOI field
-  var manageDoi = function() { 
-
-      // If this is the wrong material type, we may need to remove the field
-      if (backends[backend].materialTypes.indexOf(select.val()) === -1) {
-          $('input#doi').parent("li").remove();
-          return;
-      }
+  var manageIdentifier = function() {
 
       // First try to establish if the form already has a DOI field
       doiField = null;      
-      var regex = /\bdoi\b/i;
+      pubmedidField = null;
+      var doiregex = /\bdoi\b/i;
+      var pubmedidregex = /\bpubmedid\b/i;
 
       inputs.each(function() {
           var name = $(this).attr('name');
-          if (regex.test(name)) {
+          if (doiregex.test(name)) {
               doiField = $(this);
           }
+      });
+
+      inputs.each(function() {
+        var name = $(this).attr('name');
+        if (pubmedidregex.test(name)) {
+            pubmedidField = $(this);
+        }
       });
 
       // Add the DOI if appropriate
@@ -107,12 +148,32 @@
              debounce(crossref, 1000)(doiField.val());
           });
       }
+
+      if (pubmedidField) {
+        $(pubmedidField).off('input');
+        // Add our own
+        $(pubmedidField).on('input', function() {
+           // Kick off lookup
+           debounce(pubmedid, 1000)(pubmedidField.val());
+        });
+    }
   };
 
   // Make the call to Crossref
   var crossref = function(doi) {
       if (doi.length === 0) return;
       var url = 'https://api.crossref.org/works/' + doi;
+      $.ajax({
+          dataType: "json",
+          url: url,
+          success: backends[backend].parser
+      });
+  };
+
+  // Make the call to Pubmed
+  var pubmedid = function(pubmedid) {
+      if (pubmedid.length === 0) return;
+      var url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&id=' + pubmedid;
       $.ajax({
           dataType: "json",
           url: url,
@@ -137,6 +198,6 @@
       };
   }
 
-  manageDoi();
+  manageIdentifier();
 })();
-/* END CROSSREF DOI LOOKUP */
+/* END CROSSREF DOI / PUBMEDID LOOKUP */
