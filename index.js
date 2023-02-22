@@ -105,6 +105,12 @@
   // Manage the presence of the DOI field
   var manageIdentifier = function() {
 
+      // If this is the wrong material type, we may need to remove the field
+      if ( backend != 'ReprintsDesk' && backends[backend].materialTypes.indexOf(select.val()) === -1 ) {
+        $('input#doi').parent("li").remove();
+        return;
+      }
+
       // First try to establish if the form already has a DOI field
       doiField = null;      
       pubmedidField = null;
